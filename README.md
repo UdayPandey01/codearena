@@ -76,28 +76,31 @@ cd codearena
 ### 2. Set Up Environment Variables
 Copy the example .env file:
 
-bash
+```bash
 Copy code
 # For Mac/Linux
 cp .env.example .env
 
 # For Windows
 copy .env.example .env
+```
 Then open .env and fill in the required values (e.g., JWT_SECRET, DATABASE_URL).
 
 ### 3. Start the Docker Environment
 Build and start all services:
 
-bash
+```bash
 Copy code
 docker-compose up --build -d
+```
 
 ### 4. Run Database Migrations
 Run migrations inside the backend container:
 
-bash
+```bash
 Copy code
 docker-compose exec backend npx prisma migrate dev
+```
 ✅ That’s it! The application should now be running.
 
 Frontend: http://localhost:3000
