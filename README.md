@@ -71,7 +71,9 @@ To run it locally, ensure you have **Git**, **Node.js**, and **Docker** installe
 ```bash
 git clone https://github.com/UdayPandey01/codearena.git
 cd codearena
-2. Set Up Environment Variables
+```
+
+### 2. Set Up Environment Variables
 Copy the example .env file:
 
 bash
@@ -83,13 +85,14 @@ cp .env.example .env
 copy .env.example .env
 Then open .env and fill in the required values (e.g., JWT_SECRET, DATABASE_URL).
 
-3. Start the Docker Environment
+### 3. Start the Docker Environment
 Build and start all services:
 
 bash
 Copy code
 docker-compose up --build -d
-4. Run Database Migrations
+
+### 4. Run Database Migrations
 Run migrations inside the backend container:
 
 bash
@@ -100,6 +103,8 @@ docker-compose exec backend npx prisma migrate dev
 Frontend: http://localhost:3000
 
 Backend API: http://localhost:3001
+
+---
 
 ⚙️ Common Docker Commands
 Action	Command
