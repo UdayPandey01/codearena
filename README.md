@@ -109,7 +109,7 @@ Backend API: http://localhost:3001
 
 ---
 
-⚙️ Common Docker Commands
+### ⚙️ Common Docker Commands
 Action	Command
 Start all services	docker-compose up -d
 Stop all services	docker-compose down
@@ -118,5 +118,5 @@ View logs for backend	docker-compose logs -f backend
 Run command in backend container	docker-compose exec backend <command>
 
 ---
-📄 License
+### 📄 License
 This project is licensed under the MIT License. See the LICENSE file for details.
