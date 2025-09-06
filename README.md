@@ -116,3 +116,7 @@ Stop all services	docker-compose down
 Stop & remove all data volumes	docker-compose down --volumes
 View logs for backend	docker-compose logs -f backend
 Run command in backend container	docker-compose exec backend <command>
+
+---
+📄 License
+This project is licensed under the MIT License. See the LICENSE file for details.
