@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-c
+import { PrismaService } from 'src/core/database/prisma.service';
 import { CreateProblemDto } from './dto/create-problem.dto';
 import { UpdateProblemDto } from './dto/update-problem.dto';
 
@@ -7,8 +7,11 @@ import { UpdateProblemDto } from './dto/update-problem.dto';
 export class ProblemService {
   constructor(private prisma: PrismaService) {}
 
-  create(data: CreateProblemDto) {
-    return this.prisma.problem.create({ data });
+  async create(data: CreateProblemDto) {
+    const problem_create = await this.prisma.problem.create({
+      data
+    })
+    return problem_create;
   }
 
   findAll() {
