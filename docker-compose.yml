@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: codearena_backend
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -17,6 +17,7 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
+      - WATCHPACK_POLLING=true
     volumes:
       - ./apps/backend:/usr/src/app
       - /usr/src/app/node_modules
@@ -73,11 +74,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
     healthcheck:
-      test:
-        ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server kafka:29092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
 volumes:
   postgres_data:
