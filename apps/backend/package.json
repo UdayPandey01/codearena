@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node -r tsconfig-paths/register src/main.ts",
-    "start:dev": "npx ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
+    "start:dev": "npx prisma generate && npx ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
     "build": "tsc -p tsconfig.json"
   },
   "keywords": [],

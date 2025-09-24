@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   backend:
     build:
@@ -21,8 +20,57 @@ services:
     volumes:
       - ./apps/backend:/usr/src/app
       - /usr/src/app/node_modules
+    networks:
+      - codearena-net
 
-  # PostgreSQL Database
+# ////////////////////////////////////////////////////////////////////
+
+  executor:
+    build:
+      context: ./apps/executor-service
+      dockerfile: Dockerfile
+    container_name: codearena_executor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      judge0:
+        condition: service_healthy   # <-- changed from service_started
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - JUDGE0_URL=${JUDGE0_URL}
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./apps/executor-service:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - codearena-net  
+
+  judge0:
+    image: judge0/judge0:1.13.0
+    container_name: codearena_judge0
+    privileged: true
+    ports:
+      - "2358:2358"
+    networks:
+      - codearena-net
+    environment:
+      DATABASE_URL: "postgresql://user:password@postgres:5432/codearena"
+      RAILS_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:2358/health || exit 1"]
+      interval: 10s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+
+# //////////////////////////////////////////////////////////////////////  
+
   postgres:
     image: postgres:15
     container_name: codearena_postgres
@@ -40,28 +88,44 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - codearena-net  
 
-  # Redis In-Memory Store
+# ////////////////////////////////////////////////////////////////////////
+
   redis:
     image: redis:7
     container_name: codearena_redis
     ports:
       - "6380:6379"
     restart: unless-stopped
+    networks:
+      - codearena-net
 
-  # Zookeeper (required for Kafka)
+# /////////////////////////////////////////////////////////////////////////      
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
     container_name: codearena_zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "zookeeper-shell zookeeper:2181 ls /"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - codearena-net
 
-  # Kafka Message Broker
+# /////////////////////////////////////////////////////////////////////////        
+
   kafka:
     image: confluentinc/cp-kafka:7.3.0
     container_name: codearena_kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9093:9092"
     environment:
@@ -78,6 +142,12 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+    networks:
+      - codearena-net  
 
 volumes:
   postgres_data:
+
+networks:
+  codearena-net:
+    driver: bridge
