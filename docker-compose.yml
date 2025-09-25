@@ -10,7 +10,7 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy # Changed to service_healthy for robustness
       kafka:
         condition: service_healthy
     environment:
@@ -23,8 +23,6 @@ services:
     networks:
       - codearena-net
 
-# ////////////////////////////////////////////////////////////////////
-
   executor:
     build:
       context: ./apps/executor-service
@@ -36,7 +34,7 @@ services:
       kafka:
         condition: service_healthy
       judge0:
-        condition: service_healthy   # <-- changed from service_started
+        condition: service_healthy
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JUDGE0_URL=${JUDGE0_URL}
@@ -45,7 +43,7 @@ services:
       - ./apps/executor-service:/usr/src/app
       - /usr/src/app/node_modules
     networks:
-      - codearena-net  
+      - codearena-net
 
   judge0:
     image: judge0/judge0:1.13.0
@@ -53,23 +51,25 @@ services:
     privileged: true
     ports:
       - "2358:2358"
-    networks:
-      - codearena-net
-    environment:
-      DATABASE_URL: "postgresql://user:password@postgres:5432/codearena"
-      RAILS_ENV: production
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:2358/health || exit 1"]
-      interval: 10s
-      retries: 10
-      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy
-
-
-
-# //////////////////////////////////////////////////////////////////////  
+      # --- FIX 1: ADDED DEPENDENCY ON REDIS ---
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      # --- FIX 2: POINTED TO THE CORRECT DATABASE ---
+      - DATABASE_URL=postgresql://user:password@postgres:5432/codearena
+      - RAILS_ENV=production
+    networks:
+      - codearena-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2358/languages || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   postgres:
     image: postgres:15
@@ -89,20 +89,22 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - codearena-net  
-
-# ////////////////////////////////////////////////////////////////////////
+      - codearena-net
 
   redis:
-    image: redis:7
+    image: redis:6-alpine # Using a specific version is good practice
     container_name: codearena_redis
     ports:
       - "6380:6379"
     restart: unless-stopped
+    # --- FIX 1 (Part B): ADDED HEALTHCHECK TO REDIS ---
+    healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
     networks:
       - codearena-net
-
-# /////////////////////////////////////////////////////////////////////////      
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
@@ -110,15 +112,14 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=*"
     healthcheck:
-      test: ["CMD-SHELL", "zookeeper-shell zookeeper:2181 ls /"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
+        test: ["CMD-SHELL", "echo 'ruok' | nc localhost 2181 | grep imok"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
     networks:
       - codearena-net
-
-# /////////////////////////////////////////////////////////////////////////        
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -143,7 +144,7 @@ services:
       timeout: 10s
       retries: 10
     networks:
-      - codearena-net  
+      - codearena-net
 
 volumes:
   postgres_data:
