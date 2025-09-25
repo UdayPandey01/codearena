@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  username     String    @unique
+  passwordHash String
+  submissions  Submission[]
+  
+  rooms        RoomParticipant[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Problem {
+  id          String       @id @default(uuid())
+  title       String       @unique
+  description String       @db.Text
+  difficulty  String
+  tags        String[]
+  constraints String?      @db.Text
+  examples    Json
+  testCases   Json
+  submissions Submission[]
+  codingRooms CodingRoom[] 
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Submission {
+  id         String   @id @default(uuid())
+  sourceCode String   @db.Text
+  languageId Int
+  status     String   @default("Pending")
+  createdAt  DateTime @default(now())
+
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String
+
+  problem   Problem    @relation(fields: [problemId], references: [id])
+  problemId String
+
+  room      CodingRoom? @relation(fields: [roomId], references: [id])
+  roomId    String?
+}
+
+model CodingRoom {
+  id        String   @id @default(uuid())
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  problem      Problem           @relation(fields: [problemId], references: [id])
+  problemId    String
+  participants RoomParticipant[]
+  submissions  Submission[]
+}
+
+model RoomParticipant {
+  joinedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  room   CodingRoom @relation(fields: [roomId], references: [id])
+  roomId String
+
+  @@id([userId, roomId])
+}
