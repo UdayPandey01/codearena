@@ -14,7 +14,10 @@ export class ProcessingService {
   ) {}
 
   async processSubmission(job: SubmissionJob) {
-    const { submissionId, sourceCode, languageId, problemId, roomId } = job;
+    const submissionJob: SubmissionJob =
+    typeof job === 'string' ? JSON.parse(job) : job;
+
+    const { submissionId, sourceCode, languageId, problemId, roomId } = submissionJob;
     let finalVerdict = 'Error'; 
 
     try {
@@ -34,6 +37,10 @@ export class ProcessingService {
       const testCases = problem.testCases as TestCase[];
       finalVerdict = 'Accepted'; 
 
+      if (!sourceCode) throw new Error('sourceCode is empty');
+      if (!languageId) throw new Error('languageId is empty');
+      if (!problemId) throw new Error('problemId is empty');
+
       for (const testCase of testCases) {
         this.logger.log(`Running test case for submission: ${submissionId}`);
         this.logger.log(`Judge) url ${process.env.JUDGE0_URL}`)
@@ -42,13 +49,13 @@ export class ProcessingService {
           `${process.env.JUDGE0_URL}/submissions?base64_encoded=false&wait=true`,
           {
             source_code: sourceCode,
-            language_id: languageId,
-            stdin: testCase.input,
-            expected_output: testCase.output,
+            language_id: Number(languageId),
+            stdin: testCase.input || '',
+            expected_output: testCase.output || '',
           },
         );
 
-        const verdict = response.data.status.description;
+        const verdict = response.data?.status?.description || 'Error';
 
         if (verdict !== 'Accepted') {
           finalVerdict = verdict;

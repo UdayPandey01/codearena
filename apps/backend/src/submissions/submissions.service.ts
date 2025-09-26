@@ -29,6 +29,7 @@ export class SubmissionService {
 
     await this.kafkaProducer.produce("submission-created", {
       submissionId: submission.id,
+      sourceCode: submission.sourceCode,
       languageId: submission.languageId,
       problemId: submission.problemId,
       roomId : submission.roomId

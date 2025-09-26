@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
-import { Kafka, Consumer } from 'kafkajs';
+import { Kafka } from 'kafkajs';
 import { ProcessingService } from '../processing/processing.service';
 
 @Injectable()
@@ -18,10 +18,12 @@ export class KafkaConsumerService implements OnModuleInit {
     });
 
     await consumer.run({
-      eachMessage: async ({ topic, partition, message }) => {
-        const submissionJob = JSON.parse(message.value.toString());
+      eachMessage: async ({ message }) => {
+        const submissionJob = JSON.parse(message.value?.toString() || '{}');
         console.log('Received new submission job:', submissionJob.submissionId);
 
+        // --- THIS IS THE CRITICAL LINE TO ADD BACK ---
+        // This passes the job to your other service to do the actual work.
         await this.processingService.processSubmission(submissionJob);
       },
     });
