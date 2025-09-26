@@ -10,7 +10,7 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy # Changed to service_healthy for robustness
+        condition: service_healthy
       kafka:
         condition: service_healthy
     environment:
@@ -34,7 +34,7 @@ services:
       kafka:
         condition: service_healthy
       judge0:
-        condition: service_healthy
+        condition: service_healthy # Now depends on the healthy Judge0 service
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - JUDGE0_URL=${JUDGE0_URL}
@@ -54,13 +54,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      # --- FIX 1: ADDED DEPENDENCY ON REDIS ---
       redis:
         condition: service_healthy
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      # --- FIX 2: POINTED TO THE CORRECT DATABASE ---
-      - DATABASE_URL=postgresql://user:password@postgres:5432/codearena
+      - DATABASE_URL=postgresql://user:password@postgres:5432/codearena_judge0_db
+      - REDIS_HOST=codearena_redis      # <- use host and port instead of REDIS_URL
+      - REDIS_PORT=6379
       - RAILS_ENV=production
     networks:
       - codearena-net
@@ -92,17 +91,16 @@ services:
       - codearena-net
 
   redis:
-    image: redis:6-alpine # Using a specific version is good practice
+    image: redis:6-alpine
     container_name: codearena_redis
     ports:
-      - "6380:6379"
+      - "6379:6379"
     restart: unless-stopped
-    # --- FIX 1 (Part B): ADDED HEALTHCHECK TO REDIS ---
     healthcheck:
-        test: ["CMD", "redis-cli", "ping"]
-        interval: 5s
-        timeout: 5s
-        retries: 5
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - codearena-net
 
@@ -112,14 +110,19 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=*"
+      ZOO_4LW_COMMANDS_WHITELIST: "ruok,stat,srvr,conf"
+    ports:
+      - "2181:2181"
     healthcheck:
-        test: ["CMD-SHELL", "echo 'ruok' | nc localhost 2181 | grep imok"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
+      test: ["CMD-SHELL", "echo srvr | nc 127.0.0.1 2181 | grep Mode || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - codearena-net
+
+
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -133,13 +136,14 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093,PLAINTEXT_INTERNAL://codearena_kafka:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server kafka:29092"]
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server codearena_kafka:29092"]
       interval: 15s
       timeout: 10s
       retries: 10
